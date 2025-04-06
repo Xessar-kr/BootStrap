@@ -32,6 +32,12 @@ public class UserController {
         return "admin";
     }
 
+    @GetMapping("admin-rest")
+    public String adminRest(Model model) {
+        model.addAttribute("currentSection", "admin");
+        return "admin-rest";
+    }
+
     @PostMapping("/admin/create")
     public String createUser(@ModelAttribute("newUser") User user, @RequestParam("role") String role, Model model) {
         try {
@@ -101,7 +107,6 @@ public class UserController {
             roles.add(userRole);
             user.setRoles(roles);
 
-            userService.save(user);
             return "redirect:/admin";
         } catch (DataIntegrityViolationException e) {
             model.addAttribute("error", "This user already exists");
@@ -148,5 +153,4 @@ public class UserController {
     public String loginPage() {
         return "login";
     }
-
 }

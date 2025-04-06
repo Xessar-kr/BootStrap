@@ -11,7 +11,6 @@ import org.springframework.stereotype.Service;
 import java.util.*;
 
 @Service
-
 public class UserServiceImpl implements UserService {
     @Autowired
     private UserDao userDao;
@@ -23,21 +22,22 @@ public class UserServiceImpl implements UserService {
     private RoleRepository roleRepository;
 
     @Override
-    public void save(User user) {
+    public User save(User user) {
+        System.out.println("Saving user: " + user);
         if (user.getId() != 0) {
+            System.out.println("Editing user with ID: " + user.getId());
             User existingUser = userDao.findById(user.getId())
                     .orElseThrow(() -> new RuntimeException("Пользователь не найден"));
-            existingUser.setFirstName(user.getFirstName());
-            existingUser.setSecondName(user.getSecondName());
-            existingUser.setEmail(user.getEmail());
+            System.out.println("Existing user: " + existingUser);
             if (user.getPassword() != null && !user.getPassword().isEmpty()) {
-                existingUser.setPassword(passwordEncoder.encode(user.getPassword()));
+                user.setPassword(passwordEncoder.encode(user.getPassword()));
             }
-            if (user.getRoles() != null) {
-                existingUser.setRoles(user.getRoles());
-            }
-            userDao.save(existingUser);
+            System.out.println("User before saving: " + user);
+            User savedUser = userDao.save(user); // Сохраняем переданный объект
+            System.out.println("User saved successfully: " + savedUser);
+            return savedUser;
         } else {
+            System.out.println("Creating new user");
             if (user.getPassword() == null || user.getPassword().isEmpty()) {
                 throw new IllegalArgumentException("Пароль не может быть пустым при создании пользователя");
             }
@@ -47,11 +47,13 @@ public class UserServiceImpl implements UserService {
                 if (role == null) {
                     throw new RuntimeException("Роль ROLE_USER не найдена");
                 }
-                Set<Role> roles = new HashSet<>(); // Изменяемая коллекция
+                Set<Role> roles = new HashSet<>();
                 roles.add(role);
                 user.setRoles(roles);
             }
-            userDao.save(user);
+            User savedUser = userDao.save(user);
+            System.out.println("New user saved successfully: " + savedUser);
+            return savedUser;
         }
     }
 

@@ -23,8 +23,11 @@ public class WebSecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
+                .csrf(csrf -> csrf
+                        .ignoringRequestMatchers("/admin-rest/**")
+                )
                 .authorizeHttpRequests(autorize -> autorize
-                        .requestMatchers("/login").permitAll()
+                        .requestMatchers("/login", "/css/**", "/js/**").permitAll()
                         .requestMatchers("/admin/**").hasRole("ADMIN")
                         .requestMatchers("/user").hasAnyRole("USER", "ADMIN")
                         .anyRequest().authenticated()

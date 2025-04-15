@@ -1,9 +1,8 @@
-package com.example.BootStrap.controller;
+package com.example.bootstrap.controller;
 
-import com.example.BootStrap.dao.RoleRepository;
-import com.example.BootStrap.model.Role;
-import com.example.BootStrap.model.User;
-import com.example.BootStrap.service.UserService;
+import com.example.bootstrap.dao.RoleRepository;
+import com.example.bootstrap.model.User;
+import com.example.bootstrap.service.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -12,16 +11,13 @@ import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Collections;
-import java.util.HashSet;
-import java.util.Set;
+import java.util.List;
 
 
 @Controller
 public class UserController {
     @Autowired
     private UserService userService;
-    @Autowired
-    private RoleRepository roleRepository;
 
     @GetMapping("/admin")
     public String adminPage(Model model) {
@@ -39,13 +35,9 @@ public class UserController {
     }
 
     @PostMapping("/admin/create")
-    public String createUser(@ModelAttribute("newUser") User user, @RequestParam("role") String role, Model model) {
+    public String createUser(@ModelAttribute("newUser") User user, @RequestParam("roles") List<String> roles, Model model) {
         try {
-            Role userRole = roleRepository.findByName(role);
-            Set<Role> roles = new HashSet<>();
-            roles.add(userRole);
-            user.setRoles(roles);
-            userService.save(user);
+            userService.createUserWithRoles(user, roles);
             return "redirect:/admin";
         } catch (DataIntegrityViolationException e) {
             model.addAttribute("error", "This user already exists");
@@ -80,7 +72,7 @@ public class UserController {
             @RequestParam("secondName") String secondName,
             @RequestParam("email") String email,
             @RequestParam(value = "password", required = false) String password,
-            @RequestParam("role") String role,
+            @RequestParam("roles") List<String> roles,
             Model model) {
         try {
             User user = userService.findById(id);
@@ -96,16 +88,11 @@ public class UserController {
             user.setSecondName(secondName);
             user.setEmail(email);
             if (password != null && !password.isEmpty()) {
-                user.setPassword(password); // Пароль будет закодирован в UserServiceImpl
+                user.setPassword(password);
             }
 
-            Role userRole = roleRepository.findByName(role);
-            if (userRole == null) {
-                throw new RuntimeException("Role not found: " + role);
-            }
-            Set<Role> roles = new HashSet<>(); // Создаем изменяемую коллекцию
-            roles.add(userRole);
-            user.setRoles(roles);
+            userService.updateUserRoles(user, roles);
+            userService.save(user);
 
             return "redirect:/admin";
         } catch (DataIntegrityViolationException e) {

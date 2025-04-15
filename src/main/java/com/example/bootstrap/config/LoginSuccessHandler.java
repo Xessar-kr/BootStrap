@@ -1,4 +1,4 @@
-package com.example.BootStrap.config;
+package com.example.bootstrap.config;
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;

@@ -1,6 +1,6 @@
-package com.example.BootStrap.dao;
+package com.example.bootstrap.dao;
 
-import com.example.BootStrap.model.Role;
+import com.example.bootstrap.model.Role;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface RoleRepository extends JpaRepository<Role, Integer> {

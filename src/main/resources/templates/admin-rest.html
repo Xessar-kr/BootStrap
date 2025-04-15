@@ -256,13 +256,11 @@
                         <input type="password" id="newUserPassword" class="form-control" required>
                     </div>
                     <div class="mb-3">
-                        <label class="form-label">Role</label>
-                        <div class="role-container">
-                            <input type="hidden" name="role" id="roleInput">
-                            <button type="button" class="role-btn mb-2" onclick="selectRole('ROLE_ADMIN')">ADMIN
-                            </button>
-                            <button type="button" class="role-btn" onclick="selectRole('ROLE_USER')">USER</button>
-                        </div>
+                        <label class="form-label">Roles</label>
+                        <select id="newUserRoles" name="roles" multiple class="form-control">
+                            <option value="ROLE_USER">USER</option>
+                            <option value="ROLE_ADMIN">ADMIN</option>
+                        </select>
                     </div>
                     <div class="d-flex justify-content-center">
                         <button type="submit" class="btn btn-success mt-2">Add new user</button>
@@ -305,10 +303,10 @@
                                        placeholder="Leave blank to keep unchanged">
                             </div>
                             <div class="mb-3">
-                                <label class="form-label">Role</label>
-                                <select name="role" class="form-control" id="editUserRole">
-                                    <option value="ROLE_ADMIN">ADMIN</option>
+                                <label class="form-label">Roles</label>
+                                <select name="roles" id="editUserRoles" multiple class="form-control">
                                     <option value="ROLE_USER">USER</option>
+                                    <option value="ROLE_ADMIN">ADMIN</option>
                                 </select>
                             </div>
                             <div class="modal-footer">
@@ -365,7 +363,6 @@
         integrity="sha384-gtEjrD/SeCtmISkJkNUaaKMoLD0//ElJ19smozuHV6z3Iehds+3Ulb9Bn9Plx0x4"
         crossorigin="anonymous"></script>
 <script>
-    // Загрузка списка пользователей
     document.addEventListener('DOMContentLoaded', function () {
         fetch('/admin-rest/users')
             .then(response => response.json())
@@ -373,16 +370,17 @@
                 const tableBody = document.querySelector('#userTableBody');
                 tableBody.innerHTML = '';
                 users.forEach(user => {
+                    const rolesDisplay = user.roles.map(role => role.name.replace('ROLE_', '')).join(', ');
                     tableBody.innerHTML += `
-                        <tr>
-                            <td>${user.id}</td>
-                            <td>${user.firstName}</td>
-                            <td>${user.secondName}</td>
-                            <td>${user.email}</td>
-                            <td>${user.roles[0]?.name.replace('ROLE_', '') || 'NO ROLE'}</td>
-                            <td><button class="btn btn-sm btn-edit" onclick="openEditModal(${user.id})">Edit</button></td>
-                            <td><button class="btn btn-sm btn-delete" onclick="openDeleteModal(${user.id})">Delete</button></td>
-                        </tr>`;
+                    <tr>
+                        <td>${user.id}</td>
+                        <td>${user.firstName}</td>
+                        <td>${user.secondName}</td>
+                        <td>${user.email}</td>
+                        <td>${rolesDisplay || 'NO ROLE'}</td>
+                        <td><button class="btn btn-sm btn-edit" onclick="openEditModal(${user.id})">Edit</button></td>
+                        <td><button class="btn btn-sm btn-delete" onclick="openDeleteModal(${user.id})">Delete</button></td>
+                    </tr>`;
                 });
             })
             .catch(error => console.error('Error loading users:', error));
@@ -399,7 +397,10 @@
                 document.getElementById('editUserFirstName').value = user.firstName;
                 document.getElementById('editUserSecondName').value = user.secondName;
                 document.getElementById('editUserEmail').value = user.email;
-                document.getElementById('editUserRole').value = user.roles[0]?.name || 'ROLE_USER';
+                const roleSelect = document.getElementById('editUserRoles');
+                Array.from(roleSelect.options).forEach(option => {
+                    option.selected = user.roles.some(role => role.name === option.value);
+                });
                 new bootstrap.Modal(document.getElementById('editUserModal')).show();
             })
             .catch(error => console.error('Error loading user:', error));
@@ -408,13 +409,15 @@
     document.getElementById('editUserForm').addEventListener('submit', function (event) {
         event.preventDefault();
         const id = document.getElementById('editUserId').value;
+        const selectedRoles = Array.from(document.getElementById('editUserRoles').selectedOptions)
+            .map(option => ({name: option.value}));
         const user = {
             id: id,
             firstName: document.getElementById('editUserFirstName').value,
             secondName: document.getElementById('editUserSecondName').value,
             email: document.getElementById('editUserEmail').value,
             password: document.getElementById('editUserPassword').value,
-            roles: [{name: document.getElementById('editUserRole').value}]
+            roles: selectedRoles
         };
         fetch(`/admin-rest/users/${id}`, {
             method: 'PUT',
@@ -427,22 +430,20 @@
                 return response.json();
             })
             .then(updatedUser => {
-                // Обновить таблицу
                 const tableBody = document.querySelector('#userTableBody');
                 const row = Array.from(tableBody.rows).find(row => row.cells[0].textContent === String(updatedUser.id));
                 if (row) {
                     row.cells[1].textContent = updatedUser.firstName;
                     row.cells[2].textContent = updatedUser.secondName;
                     row.cells[3].textContent = updatedUser.email;
-                    row.cells[4].textContent = updatedUser.roles[0]?.name.replace('ROLE_', '') || 'NO ROLE';
-                } else {
-                    console.error('Row not found for user ID:', updatedUser.id);
+                    const rolesDisplay = updatedUser.roles.map(role => role.name.replace('ROLE_', '')).join(', ');
+                    row.cells[4].textContent = rolesDisplay || 'NO ROLE';
                 }
                 bootstrap.Modal.getInstance(document.getElementById('editUserModal')).hide();
             })
             .catch(error => {
                 console.error('Error updating user:', error);
-                alert('Error updating user: ' + error.message); // Временный alert для отладки
+                alert('Error updating user: ' + error.message);
             });
     });
 
@@ -485,17 +486,20 @@
 
     document.getElementById('addUserForm').addEventListener('submit', function (event) {
         event.preventDefault();
+        const selectedRoles = Array.from(document.getElementById('newUserRoles').selectedOptions)
+            .map(option => ({name: option.value}));
         const user = {
             firstName: document.getElementById('newUserFirstName').value,
             secondName: document.getElementById('newUserSecondName').value,
             email: document.getElementById('newUserEmail').value,
             password: document.getElementById('newUserPassword').value,
-            roles: [{name: document.getElementById('roleInput').value}]
+            roles: selectedRoles // Отправляем список ролей
         };
         fetch('/admin-rest/users', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify(user)
+            body: JSON.stringify(user),
+            credentials: 'include'
         })
             .then(response => {
                 if (!response.ok) throw new Error('Error creating user');
@@ -503,19 +507,18 @@
             })
             .then(newUser => {
                 const tableBody = document.querySelector('#userTableBody');
+                const rolesDisplay = newUser.roles.map(role => role.name.replace('ROLE_', '')).join(', ');
                 tableBody.innerHTML += `
-                    <tr>
-                        <td>${newUser.id}</td>
-                        <td>${newUser.firstName}</td>
-                        <td>${newUser.secondName}</td>
-                        <td>${newUser.email}</td>
-                        <td>${newUser.roles[0]?.name.replace('ROLE_', '') || 'NO ROLE'}</td>
-                        <td><button class="btn btn-sm btn-edit" onclick="openEditModal(${newUser.id})">Edit</button></td>
-                        <td><button class="btn btn-sm btn-delete" onclick="openDeleteModal(${newUser.id})">Delete</button></td>
-                    </tr>`;
+                <tr>
+                    <td>${newUser.id}</td>
+                    <td>${newUser.firstName}</td>
+                    <td>${newUser.secondName}</td>
+                    <td>${newUser.email}</td>
+                    <td>${rolesDisplay || 'NO ROLE'}</td>
+                    <td><button class="btn btn-sm btn-edit" onclick="openEditModal(${newUser.id})">Edit</button></td>
+                    <td><button class="btn btn-sm btn-delete" onclick="openDeleteModal(${newUser.id})">Delete</button></td>
+                </tr>`;
                 this.reset();
-                document.getElementById('roleInput').value = '';
-                document.querySelectorAll('.role-btn').forEach(btn => btn.classList.remove('selected'));
             })
             .catch(error => {
                 document.getElementById('errorMessage').textContent = error.message;

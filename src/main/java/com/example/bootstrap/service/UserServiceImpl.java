@@ -1,14 +1,20 @@
-package com.example.BootStrap.service;
+package com.example.bootstrap.service;
 
-import com.example.BootStrap.dao.RoleRepository;
-import com.example.BootStrap.dao.UserDao;
-import com.example.BootStrap.model.Role;
-import com.example.BootStrap.model.User;
+import com.example.bootstrap.dao.RoleRepository;
+import com.example.bootstrap.dao.UserDao;
+import com.example.bootstrap.model.Role;
+import com.example.bootstrap.model.User;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
-import java.util.*;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Optional;
+import java.util.Set;
+
 
 @Service
 public class UserServiceImpl implements UserService {
@@ -21,23 +27,24 @@ public class UserServiceImpl implements UserService {
     @Autowired
     private RoleRepository roleRepository;
 
+    private static final Logger logger = LoggerFactory.getLogger(UserServiceImpl.class);
     @Override
     public User save(User user) {
-        System.out.println("Saving user: " + user);
+        logger.info("Saving user: " + user);
         if (user.getId() != 0) {
-            System.out.println("Editing user with ID: " + user.getId());
+            logger.info("Editing user with ID: " + user.getId());
             User existingUser = userDao.findById(user.getId())
                     .orElseThrow(() -> new RuntimeException("Пользователь не найден"));
-            System.out.println("Existing user: " + existingUser);
+            logger.info("Existing user: " + existingUser);
             if (user.getPassword() != null && !user.getPassword().isEmpty()) {
                 user.setPassword(passwordEncoder.encode(user.getPassword()));
             }
-            System.out.println("User before saving: " + user);
+            logger.info("User before saving: " + user);
             User savedUser = userDao.save(user); // Сохраняем переданный объект
-            System.out.println("User saved successfully: " + savedUser);
+            logger.info("User saved successfully: " + savedUser);
             return savedUser;
         } else {
-            System.out.println("Creating new user");
+            logger.info("Creating new user");
             if (user.getPassword() == null || user.getPassword().isEmpty()) {
                 throw new IllegalArgumentException("Пароль не может быть пустым при создании пользователя");
             }
@@ -52,7 +59,7 @@ public class UserServiceImpl implements UserService {
                 user.setRoles(roles);
             }
             User savedUser = userDao.save(user);
-            System.out.println("New user saved successfully: " + savedUser);
+            logger.info("New user saved successfully: " + savedUser);
             return savedUser;
         }
     }
@@ -74,5 +81,33 @@ public class UserServiceImpl implements UserService {
 
     public Optional<User> findByEmail(String email) {
         return userDao.findByEmail(email);
+    }
+
+    @Override
+    public User createUserWithRoles(User user, List<String> roleNames) {
+        Set<Role> roles = new HashSet<>();
+        for (String roleName : roleNames) {
+            Role role = roleRepository.findByName(roleName);
+            if (role == null) {
+                throw new IllegalArgumentException("Role not found: " + roleName);
+            }
+            roles.add(role);
+        }
+        user.setRoles(roles);
+        user.setPassword(passwordEncoder.encode(user.getPassword())); // Предполагаем, что пароль кодируется
+        return userDao.save(user);
+    }
+
+    @Override
+    public void updateUserRoles(User user, List<String> roleNames) {
+        Set<Role> roles = new HashSet<>();
+        for (String roleName : roleNames) {
+            Role role = roleRepository.findByName(roleName);
+            if (role == null) {
+                throw new IllegalArgumentException("Role not found: " + roleName);
+            }
+            roles.add(role);
+        }
+        user.setRoles(roles);
     }
 }
